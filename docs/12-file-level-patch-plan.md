@@ -199,3 +199,33 @@ A dedicated Voice event should have its own event-handler module name and subscr
 ## 7. Change-control status
 
 This plan is documentation, not authorization to modify dependent WSO2 repositories. No source code in those repositories has been changed. Implementation requires explicit approval for the relevant repositories after this plan is reviewed.
+
+
+## 8. Additional source-level constraints confirmed
+
+### 8.1 Organization inheritance is fallback, not a general merge
+
+NotificationSenderManagementServiceImpl.getPublisherResources() in 1.12.13:
+- starts with the current tenant's publisher resources;
+- checks PrivilegedCarbonContext.getAccessingOrganizationId();
+- resolves that Organization ID to a tenant domain;
+- when inheritance is enabled, and the current Organization has no publisher resources at all, loads resources from the primary Organization's tenant.
+
+This is an all-or-nothing fallback when the child resource list is empty, not a per-provider merge of parent and child entries. Voice provider resolution must explicitly decide whether to preserve this behavior or implement a documented per-provider override model. Do not assume arbitrary parent/child merging.
+
+### 8.2 API v2 uses a static OSGi service lookup path
+
+The existing NotificationSenderServiceHolder resolves NotificationSenderManagementService through PrivilegedCarbonContext.getThreadLocalCarbonContext().getOSGiService(...). The API v2 factory then wraps that service. A separate Voice service can follow a similar lookup pattern, but its class/package must be imported by the API bundle and its OSGi service must be available before the API factory is initialized.
+
+### 8.3 API v2 generated sources are checked in
+
+The v1.5.31 module contains:
+- OpenAPI source at src/main/resources/notification-sender.yaml;
+- generated JAX-RS API and service interface under src/gen/java;
+- hand-written service implementation and mapping layer under src/main/java.
+
+The inspected module POM has the OpenAPI generator configuration commented out. Therefore, do not assume a normal Maven build will regenerate API classes from YAML. The OpenAPI document, generated API routes/service interface/models and hand-written implementation must be kept consistent, or a verified generator workflow must be added and pinned.
+
+### 8.4 Console source compatibility remains unverified
+
+The currently accessible identity-apps master branch reports Console package version 4.31.8, which is not the product-pinned Console 3.3.29. It is useful for discovering candidate file locations and current design patterns only. It is not a valid source baseline for a 7.3.0 UI patch.
