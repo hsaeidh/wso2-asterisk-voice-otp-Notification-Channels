@@ -72,7 +72,7 @@ class JdbcProviderRepositoryTest {
     }
 
     private ProviderRecord record(String name, long revision) {
-        Instant now = Instant.now();
+        Instant now = Instant.ofEpochMilli(Instant.now().toEpochMilli());
         return new ProviderRecord(name, "https://ari.example.test:8089/ari", "ari-user",
                 "opaque-secret-ref", "voiceotp", "PJSIP/100", "voiceotp", "s",
                 "+10000000000", 20, 60, "fa", true, revision, now, now);
