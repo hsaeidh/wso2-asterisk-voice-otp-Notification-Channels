@@ -34,7 +34,7 @@ Add a first-class **Voice Notification Channel** to WSO2 Identity Server 7.3.0 u
 | [Source validation review](docs/11-source-validation-review.md) | Source-backed review findings and corrections |
 | [File-level WSO2 patch plan](docs/12-file-level-patch-plan.md) | Exact source paths, OSGi constraints, event integration and implementation order |
 | [Voice Provider Management Service Contract](docs/13-voice-provider-management-service-contract.md) | Standalone OSGi service, provider DTOs, validation, secrets, Organization scope, REST and test contracts |
-| [Maven/Core implementation](docs/14-maven-module-and-core-implementation.md) | Module layout, implemented core behavior, explicit non-implementations and build command |
+| [Maven/Core implementation](docs/14-maven-module-and-core-implementation.md) | Module layout, implemented core behavior, explicit non-implementations and build command |\n| [Existing WSO2 Voice OTP compatibility review](docs/15-existing-wso2-voice-otp-compatibility-review.md) | Existing WSO2 authenticator, reuse boundaries and source-review requirements |
 
 ## Maven modules
 
