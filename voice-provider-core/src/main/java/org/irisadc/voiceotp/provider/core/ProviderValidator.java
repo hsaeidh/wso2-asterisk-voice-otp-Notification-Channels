@@ -6,11 +6,14 @@ import org.irisadc.voiceotp.provider.api.ProviderUpdateRequest;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public final class ProviderValidator {
     private static final Pattern NAME = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,63}");
     private static final Pattern SAFE_IDENTIFIER = Pattern.compile("[A-Za-z0-9_.-]{1,80}");
+    private static final Set<String> SUPPORTED_LANGUAGES =
+            Set.of("fa", "fa-IR", "fa_IR", "en", "en-US", "en_US");
     private final AriUrlPolicy ariUrlPolicy;
 
     public ProviderValidator(AriUrlPolicy ariUrlPolicy) {
@@ -29,14 +32,9 @@ public final class ProviderValidator {
         validateCommon(request.ariUrl(), request.username(), request.application(),
                 request.outboundEndpoint(), request.dialplanContext(), request.dialplanExtension(),
                 request.callerId(), request.ringTimeoutSeconds(), request.maxCallDurationSeconds(),
-                request.language(), request.enabled());
-        char[] secret = request.ariPassword();
-        try {
-            if (secret == null || secret.length < 1 || secret.length > 512) {
-                throw new IllegalArgumentException("ARI password is required and must be at most 512 characters");
-            }
-        } finally {
-            clear(secret);
+                request.language());
+        if (request.passwordLength() < 1 || request.passwordLength() > 512) {
+            throw new IllegalArgumentException("ARI password is required and must be at most 512 characters");
         }
     }
 
@@ -44,20 +42,16 @@ public final class ProviderValidator {
         validateCommon(request.ariUrl(), request.username(), request.application(),
                 request.outboundEndpoint(), request.dialplanContext(), request.dialplanExtension(),
                 request.callerId(), request.ringTimeoutSeconds(), request.maxCallDurationSeconds(),
-                request.language(), request.enabled());
-        char[] secret = request.ariPassword();
-        try {
-            if (secret != null && (secret.length == 0 || secret.length > 512)) {
-                throw new IllegalArgumentException("ARI password must contain 1-512 characters when supplied");
-            }
-        } finally {
-            clear(secret);
+                request.language());
+        int length = request.passwordLength();
+        if (length == 0 || length > 512) {
+            throw new IllegalArgumentException("ARI password must contain 1-512 characters when supplied");
         }
     }
 
     private void validateCommon(String ariUrl, String username, String application,
                                 String endpoint, String context, String extension, String callerId,
-                                int ringTimeout, int maxDuration, String language, boolean enabled) {
+                                int ringTimeout, int maxDuration, String language) {
         if (username == null || username.isBlank() || username.length() > 128 || hasControl(username)) {
             throw new IllegalArgumentException("ARI username is required and must be at most 128 characters");
         }
@@ -84,8 +78,8 @@ public final class ProviderValidator {
         if (maxDuration < 5 || maxDuration > 180) {
             throw new IllegalArgumentException("Maximum call duration must be between 5 and 180 seconds");
         }
-        if (language == null || !language.matches("[a-z]{2}([_-][A-Z]{2})?")) {
-            throw new IllegalArgumentException("Language must be a valid allowlisted language tag");
+        if (!SUPPORTED_LANGUAGES.contains(language)) {
+            throw new IllegalArgumentException("Language is not supported");
         }
         if (ariUrl == null || ariUrl.length() > 2048) {
             throw new IllegalArgumentException("ARI URL is required and must be at most 2048 characters");
@@ -104,9 +98,5 @@ public final class ProviderValidator {
 
     private static boolean hasControl(String value) {
         return value.chars().anyMatch(Character::isISOControl);
-    }
-
-    private static void clear(char[] value) {
-        if (value != null) java.util.Arrays.fill(value, '\0');
     }
 }
