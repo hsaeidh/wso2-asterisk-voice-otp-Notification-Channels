@@ -32,6 +32,7 @@ Add a first-class **Voice Notification Channel** to WSO2 Identity Server 7.3.0 u
 | [Open decisions and risks](docs/10-open-decisions-and-risks.md) | Unverified assumptions, risks and decision log |
 | [Version lock](docs/version-lock.md) | Product-resolved WSO2 7.3.0 component versions |
 | [Source validation review](docs/11-source-validation-review.md) | Source-backed review findings and corrections |
+| [File-level WSO2 patch plan](docs/12-file-level-patch-plan.md) | Exact source paths, OSGi constraints, event integration and implementation order |
 
 ## Critical design invariants
 
