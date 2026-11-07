@@ -2,7 +2,7 @@
 
 Add a first-class **Voice Notification Channel** to WSO2 Identity Server 7.3.0 using Asterisk ARI for outbound calls and Asterisk `SayDigits` for OTP playback.
 
-> **Project status:** Architecture and requirements documentation has been committed. Backend, WSO2 integration, Console UI and deployment code have not yet been implemented.
+> **Project status:** Provider management API contracts and an initial Java 21 Maven core scaffold are committed on the development branch. WSO2 runtime adapters, persistence, REST endpoints, Console UI, ARI HTTP implementation and deployment packaging are not yet implemented.
 
 ## Product decisions
 
@@ -34,6 +34,18 @@ Add a first-class **Voice Notification Channel** to WSO2 Identity Server 7.3.0 u
 | [Source validation review](docs/11-source-validation-review.md) | Source-backed review findings and corrections |
 | [File-level WSO2 patch plan](docs/12-file-level-patch-plan.md) | Exact source paths, OSGi constraints, event integration and implementation order |
 | [Voice Provider Management Service Contract](docs/13-voice-provider-management-service-contract.md) | Standalone OSGi service, provider DTOs, validation, secrets, Organization scope, REST and test contracts |
+| [Maven/Core implementation](docs/14-maven-module-and-core-implementation.md) | Module layout, implemented core behavior, explicit non-implementations and build command |
+
+## Maven modules
+
+- `voice-provider-api`: Java contracts, immutable scope and DTOs, repository and secret abstractions.
+- `voice-provider-core`: provider validation, CRUD orchestration and unit tests.
+
+Build with JDK 21 and Maven 3.9+:
+
+```bash
+mvn -B clean verify
+```
 
 ## Critical design invariants
 
@@ -51,7 +63,7 @@ Product-resolved versions are recorded in [version-lock.md](docs/version-lock.md
 
 ## Implementation status
 
-The repository currently contains design documentation only. No Maven modules, Java implementation, WSO2 product patches, Console UI changes or built artifacts are claimed.
+The branch contains a provider API and core scaffold with unit tests. No successful Maven build is claimed yet. No WSO2 product repository, WSO2 runtime bundle, Console UI, Asterisk dialplan or built installable artifact has been changed or produced.
 
 ## License
 
