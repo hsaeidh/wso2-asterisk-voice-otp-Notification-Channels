@@ -147,17 +147,24 @@ public final class PinnedAriConnectionTester implements AriConnectionTester {
     }
 
     private static String basicAuthorization(String username, char[] secret) throws IOException {
-        CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
+        char[] combined = new char[username.length() + 1 + secret.length];
+        username.getChars(0, username.length(), combined, 0);
+        combined[username.length()] = ':';
+        System.arraycopy(secret, 0, combined, username.length() + 1, secret.length);
         ByteBuffer bytes = null;
         byte[] raw = null;
         try {
-            bytes = encoder.encode(CharBuffer.wrap(username + ":" + CharBuffer.wrap(secret)));
+            bytes = StandardCharsets.UTF_8.newEncoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT)
+                    .encode(CharBuffer.wrap(combined));
             raw = new byte[bytes.remaining()];
             bytes.get(raw);
             return "Basic " + Base64.getEncoder().encodeToString(raw);
         } catch (CharacterCodingException e) {
             throw new IOException("Credential encoding failed", e);
         } finally {
+            java.util.Arrays.fill(combined, '\\u0000');
             if (raw != null) java.util.Arrays.fill(raw, (byte) 0);
             if (bytes != null && bytes.hasArray()) java.util.Arrays.fill(bytes.array(), (byte) 0);
         }
