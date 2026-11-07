@@ -2,7 +2,7 @@
 
 Add a first-class **Voice Notification Channel** to WSO2 Identity Server 7.3.0 using Asterisk ARI for outbound calls and Asterisk `SayDigits` for OTP playback.
 
-> **Project status:** Provider management API contracts and an initial Java 21 Maven core scaffold are committed on the development branch. WSO2 runtime adapters, persistence, REST endpoints, Console UI, ARI HTTP implementation and deployment packaging are not yet implemented.
+> **Project status:** The provider-management core now includes JDBC persistence, AES-GCM encrypted credential storage (with the master key injected by the host), and a TLS-verified ARI read-only connection tester with DNS address pinning. WSO2-specific secret-key/DataSource/context adapters, OSGi registration, Notification Sender REST integration, Console UI, OTP delivery/fallback integration and installable packaging remain outstanding.
 
 ## Product decisions
 
@@ -63,7 +63,7 @@ Product-resolved versions are recorded in [version-lock.md](docs/version-lock.md
 
 ## Implementation status
 
-The branch contains a provider API and core scaffold with unit tests. No successful Maven build is claimed yet. No WSO2 product repository, WSO2 runtime bundle, Console UI, Asterisk dialplan or built installable artifact has been changed or produced. The upstream code-change map is documented in [document 16](docs/16-upstream-wso2-contribution-map.md); this project currently contains the contributor plan, not upstream implementation.
+The provider API/core and runtime-neutral JDBC, AES-GCM and ARI adapters are implemented on the development branch. GitHub Actions has passed the Java 21 Maven verification for the latest provider-runtime-adapters commit (13 tests). This does not validate WSO2 runtime integration, production database compatibility, a live ARI endpoint, the Console UI, OTP delivery/fallback or an installable WSO2 feature. No upstream WSO2 repository has been changed. The upstream code-change map is documented in [document 16](docs/16-upstream-wso2-contribution-map.md); this project currently contains the contributor plan, not upstream implementation.
 
 ## License
 
