@@ -46,6 +46,21 @@ class DefaultVoiceProviderManagementServiceTest {
     }
 
     @Test
+    void createRejectsNonAllowlistedPortAndDoesNotPersistSecret() {
+        ProviderCreateRequest request = new ProviderCreateRequest("BadPort",
+                "https://asterisk.example.test:9443/ari", "ari-user", "secret".toCharArray(),
+                "voice-otp", "PJSIP/irisa", "voice-otp", "s", "+982100000000", 25, 45, "fa", true);
+
+        VoiceProviderException error = assertThrows(VoiceProviderException.class,
+                () -> service.create(scope, request));
+
+        assertEquals(VoiceProviderException.Code.VALIDATION_FAILED, error.getCode());
+        assertEquals(-1, request.passwordLength());
+        assertTrue(repository.rows.isEmpty());
+        assertTrue(secrets.values.isEmpty());
+    }
+
+    @Test
     void createRejectsNonHttpsAndDoesNotPersistSecret() {
         ProviderCreateRequest request = new ProviderCreateRequest("Bad", "http://asterisk.example.test:8088/ari",
                 "ari-user", "secret".toCharArray(), "voice-otp", "PJSIP/irisa", "voice-otp",
