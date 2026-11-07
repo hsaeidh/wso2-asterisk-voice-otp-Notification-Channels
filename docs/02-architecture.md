@@ -78,28 +78,17 @@ Do not assume that adding a new REST endpoint makes the notification channel dis
 
 ## 5. Core service contracts
 
-### Provider management
+Provider management is a **dedicated OSGi service**, not an external implementation of the private notification-sender `ChannelConfigurationHandler` registry. The normative interface, DTOs, persistence and secret contracts, scope resolution, validation, REST behavior and acceptance tests are specified in [Voice Provider Management Service Contract](13-voice-provider-management-service-contract.md).
 
-```java
-interface VoiceProviderManagementService {
-    VoiceProvider create(String effectiveConfigScope, VoiceProviderCreateRequest request);
-    VoiceProvider get(String effectiveConfigScope, String name);
-    List<VoiceProviderSummary> list(String effectiveConfigScope);
-    VoiceProvider update(String effectiveConfigScope, String name, VoiceProviderUpdateRequest request);
-    void delete(String effectiveConfigScope, String name);
-    ProviderTestResult test(String effectiveConfigScope, String name);
-}
-```
+At the architecture level, keep these boundaries:
+- `VoiceProviderManagementService`: scoped CRUD and non-billable connection test;
+- `ProviderScopeResolver`: derives scope only from authenticated WSO2 context;
+- `VoiceProviderRepository`: persists non-secret provider metadata with optimistic concurrency;
+- `VoiceProviderSecretStore`: stores and resolves opaque secret references;
+- `VoiceProviderResolver`: resolves an authorized provider for delivery;
+- `AsteriskAriConnectionTester`: performs a read-only ARI check and never originates a call.
 
-The effective configuration scope must be resolved from authenticated WSO2 context. It is deliberately not named `organizationId` until the organization/tenant mapping is proven.
-
-### Provider resolution
-
-```java
-interface VoiceProviderResolver {
-    ResolvedVoiceProvider resolve(String effectiveConfigScope, String providerName);
-}
-```
+The exact WSO2 Secret Manager service, Organization context accessors and persistence API remain runtime-verification items. Do not invent class names or assume a product API from another release.
 
 Credentials may exist only inside the trusted service boundary and must never be serialized to API responses or logs.
 
