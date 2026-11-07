@@ -17,14 +17,15 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class JdbcAesGcmProviderSecretStoreTest {
     private JdbcAesGcmProviderSecretStore store;
+    private JdbcDataSource dataSource;
     private final ProviderScope root = new ProviderScope("carbon.super", "org-root");
     private final ProviderScope child = new ProviderScope("carbon.super", "org-child");
 
     @BeforeEach
     void setUp() throws Exception {
-        JdbcDataSource ds = new JdbcDataSource();
-        ds.setURL("jdbc:h2:mem:secrets_" + System.nanoTime() + ";DB_CLOSE_DELAY=-1");
-        try (Connection c = ds.getConnection(); Statement s = c.createStatement()) {
+        dataSource = new JdbcDataSource();
+        dataSource.setURL("jdbc:h2:mem:secrets_" + System.nanoTime() + ";DB_CLOSE_DELAY=-1");
+        try (Connection c = dataSource.getConnection(); Statement s = c.createStatement()) {
             s.execute("CREATE TABLE voice_provider_secret (tenant_domain VARCHAR(255) NOT NULL, "
                     + "organization_id VARCHAR(255) NOT NULL, secret_reference VARCHAR(64) NOT NULL, "
                     + "iv_b64 VARCHAR(64) NOT NULL, ciphertext_b64 VARCHAR(8192) NOT NULL, "
@@ -33,7 +34,7 @@ class JdbcAesGcmProviderSecretStoreTest {
         KeyGenerator generator = KeyGenerator.getInstance("AES");
         generator.init(256);
         SecretKey key = generator.generateKey();
-        store = new JdbcAesGcmProviderSecretStore(ds, key);
+        store = new JdbcAesGcmProviderSecretStore(dataSource, key);
     }
 
     @Test
@@ -53,9 +54,15 @@ class JdbcAesGcmProviderSecretStoreTest {
     }
 
     @Test
-    void rejectsTamperedReferenceOrCiphertext() throws Exception {
+    void rejectsTamperedCiphertext() throws Exception {
         String reference = store.store(root, "provider-a", "credential".toCharArray());
-        assertThrows(VoiceProviderException.class,
-                () -> store.resolve(child, reference));
+        try (Connection c = dataSource.getConnection();
+             java.sql.PreparedStatement p = c.prepareStatement(
+                     "UPDATE voice_provider_secret SET ciphertext_b64=? WHERE secret_reference=?")) {
+            p.setString(1, "AAAA");
+            p.setString(2, reference);
+            assertEquals(1, p.executeUpdate());
+        }
+        assertThrows(VoiceProviderException.class, () -> store.resolve(root, reference));
     }
 }
