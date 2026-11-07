@@ -73,7 +73,7 @@ Illustrative create/update payload:
 }
 ```
 
-This is a logical model, not a final OpenAPI schema. Validate field names, constraints and provider model against the final ARI implementation.
+This is a logical model, not a final OpenAPI schema. Validate field names, constraints and provider model against the final ARI implementation. The normative service-level DTO, validation, persistence and secret contracts are in [Voice Provider Management Service Contract](13-voice-provider-management-service-contract.md).
 
 ## 5. Secret handling
 
@@ -88,11 +88,15 @@ This is a logical model, not a final OpenAPI schema. Validate field names, const
 
 ## 6. Tenant and organization isolation
 
+The v1 management contract disables inheritance by default until Organization mapping is proven. If explicitly enabled later, it uses all-or-nothing fallback (child list if non-empty, otherwise primary Organization list); it does not merge parent and child providers. Writes always target the authenticated local scope. See the [normative scope policy](13-voice-provider-management-service-contract.md#3-scope-model-and-organization-resolution).
+
 The published API route is tenant-domain based. Organization-scoped provider isolation is a product requirement, but the mapping from Organization Management context to the notification sender configuration tenant must be proven in IS 7.3.0.
 
 Do not trust an arbitrary client-supplied tenant or organization identifier. Derive context from the authenticated WSO2 request, authorize it, and test root organization, child organization and tenant-domain behavior. Until this is proven, describe the design as **tenant-context aware with organization mapping to be verified**, not as an already-supported organization-scoped API.
 
 ## 7. API behavior and security
+
+The proposed `/test` operation is strictly a non-billable, read-only ARI connectivity check. It must not originate a call. A billable test call, if ever required, is a separate future operation with its own permission, destination allowlist and rate limit. The complete contract is in [the service contract](13-voice-provider-management-service-contract.md#7-rest-contract).
 
 - Production ARI URLs must use HTTPS with certificate validation.
 - Validate host, port, path and URL scheme.
