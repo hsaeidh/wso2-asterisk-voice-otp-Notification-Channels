@@ -6,87 +6,110 @@
 
 ```text
                          WSO2 Identity Server 7.3.0
-  +------------------------------------------------------------------+
-  | Console UI                                                      |
-  |   Notification Channels -> Voice Provider                       |
-  |          |                                                       |
-  |          v                                                       |
-  | Notification Sender REST API v2 (extend existing API if viable) |
-  |          |                                                       |
-  | Provider Management / Organization Resolver / Secret Adapter    |
-  |                                                                  |
-  | Password Recovery adapter ----+                                  |
-  |                                +--> OTP Delivery Coordinator     |
-  | Login MFA adapter ------------+          |                       |
-  |                                           +--> Voice Adapter      |
-  |                                           |       |               |
-  |                                           |       v               |
-  |                                           |    Asterisk ARI       |
-  |                                           |       |               |
-  |                                           |       v               |
-  |                                           |   Dialplan/SayDigits  |
-  |                                           |                       |
-  |                                           +--> WSO2 SMS Adapter   |
-  +------------------------------------------------------------------+
+  +---------------------------------------------------------------------+
+  | Console UI: Notification Channels -> Voice Provider                |
+  |       |                                                             |
+  |       v                                                             |
+  | Notification Sender API v2: /notification-senders/voice (proposed)  |
+  |       |                                                             |
+  |       v                                                             |
+  | Sender Management / tenant-config persistence / Secret adapter      |
+  |                                                                     |
+  | Password Recovery adapter --------+                                 |
+  |                                    +--> Delivery Coordinator       |
+  | Login MFA / SMSOTP adapter --------+          |                     |
+  |                                               +--> Voice adapter    |
+  |                                               |       |             |
+  |                                               |       v             |
+  |                                               |    Asterisk ARI     |
+  |                                               |       |             |
+  |                                               |       v             |
+  |                                               |  Stasis/Dialplan    |
+  |                                               |   SayDigits         |
+  |                                               |                     |
+  |                                               +--> WSO2 SMS sender  |
+  |                                                                     |
+  | Notification event handler / VOICE dispatch integration (required  |
+  | where WSO2 event-based notification path is used)                  |
+  +---------------------------------------------------------------------+
 ```
 
 ## 2. Trust boundaries
 
-1. **WSO2 identity boundary:** owns user identity, organization context, OTP generation, challenge validity, expiry and authentication outcome.
-2. **Provider configuration boundary:** stores non-secret provider settings in organization scope and credentials in the WSO2 secret facility.
-3. **ARI boundary:** WSO2 authenticates to the configured Asterisk ARI endpoint over TLS. ARI credentials must be least privilege.
-4. **Telephony boundary:** Asterisk selects the outbound trunk and executes the controlled dialplan. It must not receive the OTP in ARI metadata.
-5. **SMS boundary:** SMS requests use the already configured WSO2 SMS provider. The Voice project should not duplicate SMS credentials or gateway configuration.
+1. **WSO2 identity boundary:** owns user identity, OTP generation, challenge validity, expiry and authentication outcome.
+2. **Management boundary:** API v2 is tenant-domain routed. Organization isolation must be implemented only after proving the authenticated organization-to-tenant/configuration mapping in IS 7.3.0.
+3. **Configuration boundary:** non-secret provider settings belong in the supported notification sender configuration model or a compatible extension. Credentials belong in a secret facility verified from the exact product runtime.
+4. **ARI boundary:** WSO2 authenticates to Asterisk ARI over TLS. ARI credentials must be least privilege.
+5. **Telephony boundary:** Asterisk selects the configured outbound trunk and executes the controlled dialplan. WSO2 does not use SIP.
+6. **SMS boundary:** SMS requests reuse the WSO2 SMS sender/provider and its real delivery semantics.
 
 ## 3. Core modules
 
 | Module | Responsibility |
 |---|---|
 | `voice-otp-api` | Stable Java service interfaces, DTOs and error model |
-| `voice-otp-core` | Provider resolution, validation, organization context and policy |
-| `voice-otp-config` | Organization-scoped provider CRUD and secret integration |
+| `voice-otp-core` | Provider validation, tenant/organization context and policy |
+| `voice-otp-config` | Provider CRUD and secret adapter |
 | `voice-otp-ari` | ARI client, call lifecycle and playback result handling |
 | `voice-otp-delivery` | Delivery coordinator, state machine, idempotency and fallback |
-| `voice-otp-governance` | WSO2 notification-channel integration and Password Recovery adapter |
-| `voice-otp-authenticator` | Login MFA integration and reuse of the existing challenge |
+| `voice-otp-governance` | WSO2 notification-channel and Password Recovery integration |
+| `voice-otp-authenticator` | Login MFA integration with the existing OTP challenge |
 | `voice-otp-rest` | REST resource/service integration, authorization and serialization |
 | `voice-otp-osgi` | Declarative Services components, service registration and lifecycle |
 | `voice-otp-tests` | Unit, integration, compatibility, security and operational tests |
 
-The module split is provisional. Final OSGi boundaries must follow the actual WSO2 dependency graph and avoid split packages or duplicate exported classes.
+These are proposed modules, not existing WSO2 artifact names. Final OSGi boundaries must follow the product dependency graph and avoid split packages or duplicate exported classes.
 
-## 4. Core service contracts
+## 4. WSO2 integration surfaces
+
+The official product baseline is:
+- Identity Governance / Recovery `1.15.9`
+- Identity Server API `1.5.31`
+- Notification Event Handler / sender tenant config `1.12.13`
+- SMS OTP Authenticator `3.4.2`
+- Console UI `3.3.29`, Apps Core `4.0.15`
+- Java 21
+
+The v2 Notification Sender API is an administrative sender-configuration API, not by itself the runtime notification dispatch mechanism. Adding Voice therefore requires both:
+1. a provider-management/configuration path compatible with the sender-management service; and
+2. a runtime delivery path that consumes the WSO2 notification event/challenge context and invokes the Voice adapter.
+
+Do not assume that adding a new REST endpoint makes the notification channel dispatchable.
+
+## 5. Core service contracts
 
 ### Provider management
 
 ```java
 interface VoiceProviderManagementService {
-    VoiceProvider create(String organizationId, VoiceProviderCreateRequest request);
-    VoiceProvider get(String organizationId, String name);
-    List<VoiceProviderSummary> list(String organizationId);
-    VoiceProvider update(String organizationId, String name, VoiceProviderUpdateRequest request);
-    void delete(String organizationId, String name);
-    ProviderTestResult test(String organizationId, String name);
+    VoiceProvider create(String effectiveConfigScope, VoiceProviderCreateRequest request);
+    VoiceProvider get(String effectiveConfigScope, String name);
+    List<VoiceProviderSummary> list(String effectiveConfigScope);
+    VoiceProvider update(String effectiveConfigScope, String name, VoiceProviderUpdateRequest request);
+    void delete(String effectiveConfigScope, String name);
+    ProviderTestResult test(String effectiveConfigScope, String name);
 }
 ```
+
+The effective configuration scope must be resolved from authenticated WSO2 context. It is deliberately not named `organizationId` until the organization/tenant mapping is proven.
 
 ### Provider resolution
 
 ```java
 interface VoiceProviderResolver {
-    ResolvedVoiceProvider resolve(String organizationId, String providerName);
+    ResolvedVoiceProvider resolve(String effectiveConfigScope, String providerName);
 }
 ```
 
-The resolved object may contain credentials only inside the trusted service boundary and must never be serialized to API responses or logs.
+Credentials may exist only inside the trusted service boundary and must never be serialized to API responses or logs.
 
 ### Delivery
 
 ```java
 interface VoiceDeliveryService {
     DeliveryReceipt submit(VoiceDeliveryRequest request);
-    DeliveryStatus getStatus(String organizationId, String deliveryId);
-    void cancel(String organizationId, String deliveryId);
+    DeliveryStatus getStatus(String effectiveConfigScope, String deliveryId);
+    void cancel(String effectiveConfigScope, String deliveryId);
 }
 ```
 
@@ -96,36 +119,38 @@ interface VoiceDeliveryService {
 interface OtpChallengeAdapter {
     String getChallengeReference();
     String getDestination();
-    String getOrganizationId();
+    String getEffectiveConfigScope();
     OtpPurpose getPurpose();
     boolean isValid();
     Instant getExpiryTime();
 }
 ```
 
-The OTP itself must be supplied only through a protected, short-lived in-memory delivery handoff. It must not be added to a generally serializable challenge DTO.
+The OTP itself must be supplied only through a protected delivery handoff. It must not be added to a generally serializable challenge DTO.
 
-## 5. Password Recovery and Login MFA
+## 6. Password Recovery and Login MFA
 
-Use separate WSO2 adapters for Password Recovery and Login MFA because their lifecycle, context objects, extension points and error handling differ. They may share the coordinator and channel adapters only after the same-challenge contract is proven.
+Use separate WSO2 adapters because the recovery and authentication flows have different context objects, extension points and failure semantics. They may share the delivery coordinator and channel adapters only after the same-challenge contract is proven.
 
-Do not implement a second authenticator that independently generates a new OTP as a fallback. In particular, chaining the existing SMS OTP authenticator and a new Voice authenticator is not sufficient to guarantee OTP identity.
+Password Recovery source currently resolves only the built-in EMAIL and SMS channel values in its channel validation path. The event payload also uses different property keys for SMS OTP and other confirmation codes. VOICE integration must explicitly define its OTP property/event contract and ensure the downstream event handler receives the intended value. Do not assume that adding the enum alone is sufficient.
 
-## 6. ARI call flow
+Login MFA's SMSOTP authenticator generates an OTP and stores it in the authentication context before dispatch. Voice fallback must be integrated into that existing operation; chaining two independent authenticators is not sufficient.
 
-1. Resolve organization and provider.
+## 7. ARI call flow
+
+1. Resolve the effective provider scope and provider.
 2. Validate challenge and destination.
 3. Create an internal delivery ID and idempotency key.
-4. Ask ARI to originate the call into a dedicated Stasis application.
+4. Originate the call into a dedicated Stasis application.
 5. On answer, route the call to a controlled dialplan extension.
 6. Set the Asterisk channel language to `fa` when Persian is selected.
-7. Execute `SayDigits` using a protected channel variable populated by the controlled call handoff.
+7. Execute `SayDigits` through the controlled playback path.
 8. Collect playback/termination outcome.
-9. Complete the delivery state and clean up channel variables and call resources.
+9. Complete delivery state and clean up channel/call resources.
 
-The exact ARI originate/continue/Stasis sequence must be validated against the deployed Asterisk version and ARI API. Do not treat the illustrative dialplan as a production-ready implementation.
+The exact ARI originate/continue/Stasis sequence must be validated against the deployed Asterisk version. The OTP-to-dialplan handoff remains a security blocker until its exposure through ARI, Asterisk logs, channel variables and dialplan tracing has been tested.
 
-## 7. Asterisk dialplan contract (illustrative)
+## 8. Asterisk dialplan contract (illustrative)
 
 ```asterisk
 [voice-otp]
@@ -135,19 +160,19 @@ exten => s,1,Answer()
  same => n,Hangup()
 ```
 
-This example documents the intended playback primitive only. The actual mechanism for setting `OTP`, entering the context and reporting completion must be designed so the OTP is not exposed through ARI application arguments, channel names, UserEvent payloads or logs. The implementation must prove whether the selected Asterisk path can meet this requirement; otherwise revise the handoff design before coding.
+This example documents the intended playback primitive only. It is not production-ready. The mechanism that populates `OTP` and reports playback completion must be proven safe. Do not put the OTP in ARI appArgs, channel names, UserEvent payloads or diagnostic logs.
 
-## 8. Failure model
+## 9. Failure model
 
 Expected outcomes include `SUBMITTED`, `RINGING`, `ANSWERED`, `PLAYING`, `COMPLETED`, `BUSY`, `NO_ANSWER`, `REJECTED`, `ARI_ERROR`, `PLAYBACK_FAILED`, `CANCELLED`, `EXPIRED` and `FAILED`.
 
-Only authoritative Asterisk/ARI signals may advance a call to a successful playback state. An answered call is not equivalent to OTP playback completion.
+An answered call is not a successful delivery; require trustworthy playback completion. SMS gateway acceptance is not handset delivery.
 
-## 9. Design constraints
+## 10. Design constraints
 
-- All operations must carry an organization identifier derived from authenticated WSO2 context, not trusted from an arbitrary client-supplied field.
+- Tenant/organization scope must come from authenticated WSO2 context.
 - Provider selection must be deterministic and documented.
-- Provider deletion must not silently break active deliveries; define reference and in-flight deletion behavior.
-- A node restart must not cause an unbounded retry or duplicate call.
-- The coordinator must enforce challenge expiry before starting a call and before fallback.
+- Provider deletion must not silently break active deliveries.
+- A node restart must not cause unbounded retries or duplicate calls.
+- Challenge expiry must be checked before call start and fallback.
 - Asterisk events must be correlated by opaque delivery ID, never OTP.
