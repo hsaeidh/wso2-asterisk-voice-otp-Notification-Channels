@@ -1,6 +1,6 @@
 # Maven Modules and Provider Core Implementation
 
-**Status:** Initial implementation scaffold committed on branch `feature/voice-provider-management-core`. This is not yet a WSO2-installable feature.
+**Status:** Provider core plus runtime-neutral JDBC/AES-GCM/ARI adapters are implemented on branch `feature/provider-runtime-adapters`. Latest GitHub Actions Java 21 `mvn clean verify` passed with 13 tests. This is not yet a WSO2-installable feature.
 
 ## 1. Module layout
 
@@ -26,18 +26,38 @@ The API module intentionally has no WSO2 dependency. The Core module also avoids
 ## 3. Explicit non-implementations
 
 The following are deliberately interfaces or future integration work:
-- WSO2 Secret Manager adapter and Organization-context resolver;
-- production persistence adapter and transaction/outbox behavior;
+- WSO2 Secret Manager / secure-vault key adapter and trusted Organization-context resolver;
+- WSO2-managed DataSource binding and product-supported schema migration lifecycle;
 - OSGi Declarative Services component metadata and runtime wiring;
-- actual HTTP ARI connection tester (must be read-only and TLS-verified);
-- REST API v2 resource, authorization scopes and Console UI;
+- REST API v2 resource in the product API server, authorization scopes and Console UI;
+- production ProviderUsageChecker integration with active-delivery state;
 - runtime rate limiting and audit implementation;
-- DNS pinning/rebinding defense at connection time;
+- live ARI integration tests against a controlled Asterisk instance;
 - inherited provider lookup (disabled in v1).
 
 Do not package this scaffold as an installable WSO2 feature yet.
 
-## 4. Build and test
+## 3. Runtime-neutral adapters now implemented
+
+- `JdbcProviderRepository`: persists provider metadata using a host-supplied `DataSource`; tenant and Organization are part of the primary key; update/delete use optimistic revision predicates.
+- `JdbcAesGcmProviderSecretStore`: encrypts credentials using AES-GCM with a fresh 96-bit IV and scope-bound AAD. The master `SecretKey` is injected; this module does not read keys from configuration files or environment variables. Secret lookup and deletion are scoped by tenant and Organization.
+- `PinnedAriConnectionTester`: performs a read-only `GET /ari/asterisk/info`; resolves DNS once, connects directly to the selected IP, preserves SNI and HTTPS hostname verification, does not follow redirects, bounds connect/read timeouts and returns sanitized diagnostic codes.
+- SQL migrations are provided for provider metadata and encrypted secret rows.
+
+The JDBC and cryptographic adapters are runtime-neutral. They are not, by themselves, WSO2 adapters: the WSO2 product integration must provide the managed DataSource and a master key obtained from the supported secure-vault/secret facility. The database migration must be reviewed and applied using the deployment's supported migration process.
+
+## 4. Explicit remaining integration work
+
+- Bind the managed DataSource and secure-vault-backed master key through the WSO2 7.3.0 OSGi lifecycle.
+- Resolve tenant and Organization only from trusted Carbon request context; never from request JSON or query parameters.
+- Implement the production active-delivery usage checker and secret cleanup reconciliation.
+- Add the Voice resources and generated OpenAPI model/service code to the WSO2 API Server repository, with least-privilege scopes.
+- Register the provider service and API runtime in OSGi; wire authorization, audit, throttling and error mapping.
+- Add the Console feature and translations in the product-matched identity-apps source.
+- Implement Voice event delivery, Password Recovery and Login MFA integration with the existing OTP lifecycle, preserving one challenge and one OTP across SMS/Voice fallback.
+- Add live Asterisk integration tests and product-level WSO2 IS 7.3.0 install/upgrade tests.
+
+## 5. Build and test
 
 From repository root, with JDK 21 and Maven 3.9+:
 
@@ -47,4 +67,4 @@ mvn -B clean verify
 
 Expected initial tests cover create/secret redaction, HTTPS/host validation, Organization isolation, secret preservation/rotation, optimistic concurrency, active-delivery delete protection and secret-buffer clearing.
 
-The actual build result must be recorded only after running Maven in a JDK 21 environment.
+The latest provider-runtime-adapters commit passed GitHub Actions with JDK 21: 13 tests, 0 failures, 0 errors. The test suite covers provider orchestration, JDBC repository scope/revision behavior, encrypted secret storage and ciphertext-tamper rejection. It does not exercise a live ARI server or WSO2 runtime.
