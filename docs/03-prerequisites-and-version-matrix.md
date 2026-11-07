@@ -1,80 +1,81 @@
 # Prerequisites and Version Matrix
 
 **Target:** WSO2 Identity Server 7.3.0 / Java 21  
-**Status:** Baseline known; exact product-resolved bundle versions must be verified before implementation.
+**Status:** Product versions verified against the official `wso2/product-is:v7.3.0` POM and distribution license inventory on 2026-11-07.
 
-## 1. Required platform
+## 1. Product-locked versions
+
+| Component | Version | Evidence in product source | Notes |
+|---|---:|---|---|
+| WSO2 Identity Server | `7.3.0` | Root POM | Target release |
+| Java compiler/runtime baseline | `21` | Product POM compiler source/target | Build and runtime must use Java 21 |
+| Identity Governance / Recovery | `1.15.9` | `identity.governance.version`; recovery JAR inventory | Exact source tag `v1.15.9` |
+| Identity Server API modules | `1.5.31` | `identity.server.api.version`; Notification Sender v2 JAR inventory | Exact source tag `v1.5.31` |
+| Notification Event Handler / Sender tenant config | `1.12.13` | `identity.event.handler.notification.version`; tenant-config JAR inventory | Runtime notification dispatch and sender config must be reviewed here |
+| SMS OTP Authenticator | `3.4.2` | Product distribution JAR inventory | External extension source tag `v3.4.2`; present in product distribution |
+| Identity Apps Console | `3.3.29` | `identity.apps.console.version` | UI source must match this release |
+| Identity Apps Core | `4.0.15` | `identity.apps.core.version`; distribution JAR inventory | Not the Console UI version |
+
+The table above is the product-aligned dependency baseline. It supersedes the earlier "verify exact product version" status for these components. It does **not** prove that every internal package/API is a supported extension point; those still require source-level compatibility review.
+
+## 2. Primary source evidence
+
+- Product root POM: [wso2/product-is v7.3.0/pom.xml](https://github.com/wso2/product-is/blob/v7.3.0/pom.xml)
+- Product distribution inventory: [wso2/product-is v7.3.0/LICENSE.txt](https://github.com/wso2/product-is/blob/v7.3.0/LICENSE.txt)
+- Governance channel enum: [identity-governance v1.15.9 NotificationChannels.java](https://github.com/wso2-extensions/identity-governance/blob/v1.15.9/components/org.wso2.carbon.identity.governance/src/main/java/org/wso2/carbon/identity/governance/service/notification/NotificationChannels.java)
+- Notification Sender v2 OpenAPI: [identity-api-server v1.5.31 notification-sender.yaml](https://github.com/wso2/identity-api-server/blob/v1.5.31/components/org.wso2.carbon.identity.api.server.notification.sender/org.wso2.carbon.identity.api.server.notification.sender.v2/src/main/resources/notification-sender.yaml)
+- SMS OTP authenticator: [identity-outbound-auth-sms-otp v3.4.2 SMSOTPAuthenticator.java](https://github.com/wso2-extensions/identity-outbound-auth-sms-otp/blob/v3.4.2/component/authenticator/src/main/java/org/wso2/carbon/identity/authenticator/smsotp/SMSOTPAuthenticator.java)
+- Governance service activation: [IdentityMgtServiceComponent.java](https://github.com/wso2-extensions/identity-governance/blob/v1.15.9/components/org.wso2.carbon.identity.governance/src/main/java/org/wso2/carbon/identity/governance/internal/IdentityMgtServiceComponent.java)
+
+## 3. Required platform
 
 | Component | Requirement | Status |
 |---|---|---|
-| WSO2 Identity Server | 7.3.0 | Target confirmed |
-| Java | Java 21 | Target confirmed |
-| Maven | Version compatible with WSO2 build parent and plugin configuration | Verify from product/source build |
-| Asterisk | ARI enabled; outbound trunk configured; dedicated Stasis/dialplan path | Exact deployed version to record |
+| WSO2 Identity Server | 7.3.0 | Product target and version locked |
+| Java | 21 | Product target and version locked |
+| Maven | Use product-compatible Maven and plugin versions | Verify against product build environment |
+| Asterisk | ARI enabled; outbound trunk configured; dedicated Stasis/dialplan path | Deployment-specific version must be recorded |
 | Asterisk language assets | Persian (`fa`) digit prompts 0–9 compatible with `SayDigits` | Must be installed and tested |
 | TLS | Valid certificates for WSO2-to-ARI and Console-to-API paths | Deployment prerequisite |
-| WSO2 secret facility | Secret Manager / Secret Resolve Manager APIs available in target product | Exact bundle/API version to verify |
-| WSO2 organization context | Organization-aware management and runtime resolution | Verify in target APIs |
-| SMS provider | Existing WSO2 SMS configuration operational | Environment prerequisite |
+| WSO2 secret facility | Use the secret APIs available in the actual 7.3.0 runtime | Exact bundle/API contracts still need source verification |
+| Organization context | Must map authenticated Console/API context to the intended organization configuration | Tenant/organization semantics remain an open verification item |
+| SMS provider | Existing WSO2 SMS sender/provider operational | Environment prerequisite |
 
-## 2. Source baselines found during initial inspection
+## 4. Product repositories and planned changes
 
-These are investigation baselines, not a complete or final dependency lock:
+| Repository | Product/source baseline | Planned responsibility |
+|---|---:|---|
+| This Voice project | New | Voice provider runtime, ARI, delivery coordinator and adapters |
+| `identity-governance` | `1.15.9` | Add VOICE channel support and Password Recovery channel semantics if no public extension point exists |
+| `identity-api-server` | `1.5.31` | Extend Notification Sender API v2 contract and service |
+| `identity-event-handler-notification` | `1.12.13` | Extend sender configuration and/or notification event dispatch for VOICE, subject to exact source inspection |
+| `identity-outbound-auth-sms-otp` | `3.4.2` | Integrate Voice delivery into the existing OTP generation/challenge flow for same-OTP fallback |
+| `identity-apps` | Console `3.3.29`, Core `4.0.15` | Add Voice Provider UI using product-matched source |
 
-| Repository/component | Baseline inspected | Intended use | Remaining verification |
-|---|---:|---|---|
-| `identity-governance` | `1.15.9` | Notification channel and Password Recovery behavior | Confirm exact product dependency and patch surface |
-| `identity-api-server` | `1.5.31` | Notification Sender API v2 | Confirm exact product dependency from IS 7.3.0 POM |
-| `identity-outbound-auth-sms-otp` | `3.4.2` | Existing Login MFA SMS OTP flow | Confirm exact product bundle and API compatibility |
-| `identity-event-handler-notification` | `1.12.13` inspected as a pattern | Config/Secret/Organization integration patterns | Resolve exact product version and exported APIs |
-| `identity-apps` | Fork inspected; version not locked | Console UI | Resolve exact UI version from product POM/build metadata |
+## 5. Important distinction: API tenant path vs organization scope
 
-**Important:** An inspected tag is not proof that the same version is shipped in the target product. Before coding, produce a dependency lock table from the actual WSO2 IS 7.3.0 distribution POMs and installed bundle manifests. Do not use the conflicting UI version references found during preliminary notes as authoritative.
+The Notification Sender v2 OpenAPI server URL is tenant-domain based:
 
-## 3. Required source repositories
+`https://localhost:9443/t/{tenant-domain}/api/server/v2`
 
-| Repository | Planned change |
-|---|---|
-| `hsaeidh/wso2-asterisk-voice-otp-Notification-Channels` | New Voice modules and integration |
-| `hsaeidh/identity-apps` | Voice Provider Console card, forms, API client and routes |
-| WSO2 `identity-api-server` fork | Extend Notification Sender API v2 if no supported extension point exists |
-| WSO2 `identity-governance` fork | Register `VOICE` and integrate Password Recovery |
-| WSO2 `identity-outbound-auth-sms-otp` fork | Preserve the SMS OTP challenge while coordinating Voice fallback |
+This is not, by itself, proof that the API is organization-scoped in the WSO2 Organizations model. The implementation must establish how an authenticated organization context maps to the tenant/configuration context in IS 7.3.0. Do not invent an `organizationId` storage model or assume root/child organization isolation until verified with the actual Organization Management APIs and runtime context.
 
-Forks/patches are conditional on extension-point verification. Avoid forking a component if a supported public OSGi/API extension can satisfy the requirement without unsafe reflection or replacement of internal services.
+## 6. Asterisk prerequisites
 
-## 4. Product version verification checklist
-
-Before implementation, capture evidence for each row:
-
-- [ ] Product IS 7.3.0 root POM and dependency management values.
-- [ ] Exact governance and recovery artifact versions.
-- [ ] Exact Notification Sender API v2 artifact version.
-- [ ] Exact SMS OTP authenticator artifact version.
-- [ ] Exact notification event-handler/config/secret artifact versions.
-- [ ] Exact Console UI artifact/source version.
-- [ ] Java compiler release and OSGi execution environment.
-- [ ] Exported/imported package versions and service component dependencies.
-- [ ] Actual installed JAR names and manifests from a clean IS 7.3.0 installation.
-
-Record the resolved versions in `docs/version-lock.md` before adding implementation dependencies.
-
-## 5. Asterisk prerequisites
-
-- ARI enabled in `ari.conf`, protected with a dedicated service account.
+- ARI enabled and protected with a dedicated service account.
 - TLS enabled; certificate chain trusted by the WSO2 JVM.
 - Dedicated ARI application/Stasis application.
 - Dedicated outbound trunk and dialplan context.
 - Outbound caller ID authorized by the carrier.
-- Dialplan restricted to the intended OTP call path.
+- Dialplan restricted to the OTP call path.
 - Persian digit audio prompts installed and verified.
 - Asterisk event/log configuration reviewed for sensitive argument leakage.
-- Firewall allows only the required WSO2-to-ARI traffic.
+- Firewall allows only required WSO2-to-ARI traffic.
 - Clock synchronization enabled on WSO2 and Asterisk hosts.
 
-## 6. Environment values to collect (never commit secrets)
+## 7. Environment values to collect (never commit secrets)
 
-- WSO2 base URL and tenant/organization deployment model.
+- WSO2 base URL and organization/tenant deployment model.
 - Asterisk ARI URL, TLS trust chain, ARI application name.
 - Outbound endpoint/trunk identifier.
 - Dialplan context and extension.
