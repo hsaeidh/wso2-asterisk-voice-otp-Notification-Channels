@@ -106,7 +106,7 @@ The source-level file map, event-contract changes, OSGi constraints, Console ref
 | `identity-outbound-auth-sms-otp` 3.4.2 | OTP dispatch/fallback integration | Same OTP in Login MFA |
 | `identity-apps` Console 3.3.29 / Core 4.0.15 | Notification Channels card, provider feature, API client, routes and translations | Console UI |
 
-Exact file paths and patch necessity must be frozen against each exact tag before implementation. The table is a change-area map, not a claim that every listed file must be modified.
+Exact file paths and patch necessity must be frozen against each exact tag before implementation. The table is a change-area map, not a claim that every listed file must be modified. The contributor-ready repository/file map, proposed PR split and maintainer checklist are in [docs/16-upstream-wso2-contribution-map.md](16-upstream-wso2-contribution-map.md).
 
 ## Build strategy
 
@@ -120,4 +120,4 @@ Exact file paths and patch necessity must be frozen against each exact tag befor
 
 ## Change-control rule
 
-No dependent repository should be modified until its exact patch plan is reviewed. A build/test claim must include command, environment, version and result. Do not report a module as complete merely because source files were created.
+The user has authorized documenting the upstream change plan in this Voice repository. This does not authorize commits to dependent WSO2 repositories: each upstream change must be a separate, reviewable PR against the exact product-matched source ref and submitted to the repository's maintainers. A build/test claim must include command, environment, version and result. Do not report a module as complete merely because source files were created.
