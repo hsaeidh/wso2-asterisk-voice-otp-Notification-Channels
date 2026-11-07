@@ -34,7 +34,7 @@ Add a first-class **Voice Notification Channel** to WSO2 Identity Server 7.3.0 u
 | [Source validation review](docs/11-source-validation-review.md) | Source-backed review findings and corrections |
 | [File-level WSO2 patch plan](docs/12-file-level-patch-plan.md) | Exact source paths, OSGi constraints, event integration and implementation order |
 | [Voice Provider Management Service Contract](docs/13-voice-provider-management-service-contract.md) | Standalone OSGi service, provider DTOs, validation, secrets, Organization scope, REST and test contracts |
-| [Maven/Core implementation](docs/14-maven-module-and-core-implementation.md) | Module layout, implemented core behavior, explicit non-implementations and build command |\n| [Existing WSO2 Voice OTP compatibility review](docs/15-existing-wso2-voice-otp-compatibility-review.md) | Existing WSO2 authenticator, reuse boundaries and source-review requirements |
+| [Maven/Core implementation](docs/14-maven-module-and-core-implementation.md) | Module layout, implemented core behavior, explicit non-implementations and build command |\n| [Existing WSO2 Voice OTP compatibility review](docs/15-existing-wso2-voice-otp-compatibility-review.md) | Existing WSO2 authenticator, reuse boundaries and source-review requirements |\n| [Upstream WSO2 contribution map](docs/16-upstream-wso2-contribution-map.md) | Repository-by-repository source files, PR split, contracts and maintainer acceptance checklist |
 
 ## Maven modules
 
@@ -63,7 +63,7 @@ Product-resolved versions are recorded in [version-lock.md](docs/version-lock.md
 
 ## Implementation status
 
-The branch contains a provider API and core scaffold with unit tests. No successful Maven build is claimed yet. No WSO2 product repository, WSO2 runtime bundle, Console UI, Asterisk dialplan or built installable artifact has been changed or produced.
+The branch contains a provider API and core scaffold with unit tests. No successful Maven build is claimed yet. No WSO2 product repository, WSO2 runtime bundle, Console UI, Asterisk dialplan or built installable artifact has been changed or produced. The upstream code-change map is documented in [document 16](docs/16-upstream-wso2-contribution-map.md); this project currently contains the contributor plan, not upstream implementation.
 
 ## License
 
