@@ -28,6 +28,10 @@ Keep these in [version-lock.md](version-lock.md). Re-check installed JAR manifes
 
 **Exit:** file-level patch plan with every modified repository justified. Avoid replacing internal WSO2 services via OSGi ranking unless a supported contract explicitly permits it.
 
+## File-level patch plan
+
+The source-level file map, event-contract changes, OSGi constraints, Console ref limitation and mandatory release gates are documented in [docs/12-file-level-patch-plan.md](12-file-level-patch-plan.md). The key correction is that ChannelConfigurationHandler is not an externally usable plug-in point in 1.12.13 because its registration holder is private/internal and only the default handler is registered by the bundle.
+
 ## Phase 2 — Core Voice backend
 
 1. Create Maven reactor and OSGi module boundaries.
