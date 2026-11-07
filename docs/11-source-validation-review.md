@@ -102,3 +102,44 @@ These facts make it unsafe to implement Voice as a second independent authentica
 ## 5. Review conclusion
 
 The updated documents are now aligned with the verified IS 7.3.0 version baseline and the observed Notification Sender v2 API shape. The project is **design-ready for a focused implementation feasibility phase**, but not yet ready for production coding of the WSO2 integration until the blockers above are resolved. No code build, OSGi deployment, API runtime test or Asterisk call test is claimed by this documentation review.
+
+
+## 5. Follow-up file-level review — 2026-11-07
+
+A further file-by-file inspection clarified several implementation details and corrected an earlier interpretation.
+
+### 5.1 ChannelConfigurationHandler is not an external plug-in contract
+
+In notification sender tenant-config 1.12.13:
+- ChannelConfigurationHandler is exported, but its abstract CRUD methods are specifically Email/SMS sender operations.
+- NotificationSenderTenantConfigDataHolder is under the internal package.
+- The module POM marks the internal package private.
+- NotificationSenderTenantConfigServiceDS registers only DefaultChannelConfigurationHandler during activation.
+- The handler registry is a map held by the private data holder.
+
+Conclusion: a standalone Voice OSGi bundle cannot safely use this as a public registration extension point. Either patch this module internally or implement a separate VoiceProviderManagementService with its own persistence/resource contract and register that service through OSGi.
+
+### 5.2 Recovery event routing needs more than channel validation
+
+The exact Recovery 1.15.9 source shows:
+- NotificationPasswordRecoveryManager.triggerNotification() writes OTP_TOKEN_STRING only for SMS; other channels use CONFIRMATION_CODE.
+- NotificationPasswordRecoveryManager.getServerSupportedNotificationChannel() explicitly accepts EMAIL, SMS and EXTERNAL.
+- Utils.resolveEventName() selects the SMS-specific event name only for SMS; other channels use TRIGGER_NOTIFICATION.
+
+A Voice patch must deliberately define the Voice event name and payload property. A dedicated Voice event handler is preferred over routing Voice through the Email handler.
+
+### 5.3 Product event-handler registration
+
+The IS 7.3.0 product integration test artifact default-identity-event.properties contains:
+- module.name.2=emailSend
+- emailSend.subscription.1=TRIGGER_NOTIFICATION
+
+The Voice handler should receive its own module name and event subscription. The exact production configuration file/override mechanism must be verified in the installed IS distribution before packaging.
+
+### 5.4 Console source ref mismatch
+
+The product-resolved Console version is recorded as 3.3.29, but identity-apps refs v3.3.29 and 3.3.29 both return NOT_FOUND. The currently accessible default branch is newer and must not be used as a version-certified implementation base. The file-level plan therefore marks Console file paths as candidates only until the exact product-matched source commit is located.
+
+### 5.5 New file-level plan
+
+See [docs/12-file-level-patch-plan.md](12-file-level-patch-plan.md) for the complete file map, implementation order, OSGi constraints, API v2 model/service changes and release gates.
