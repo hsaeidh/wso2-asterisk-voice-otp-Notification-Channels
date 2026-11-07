@@ -62,4 +62,4 @@ If source review proves that the existing authenticator cannot satisfy the same-
 
 ## 5. Scope and repository boundary
 
-This review changes documentation in the dedicated Voice Notification Channel repository only. It does not modify the WSO2 upstream extension or any WSO2 product repository. Such changes require separate explicit authorization.
+This review changes documentation in the dedicated Voice Notification Channel repository only. It does not modify the WSO2 upstream extension or any WSO2 product repository. The repository-by-repository upstream contribution scope and proposed PR sequence are documented in [document 16](16-upstream-wso2-contribution-map.md).
