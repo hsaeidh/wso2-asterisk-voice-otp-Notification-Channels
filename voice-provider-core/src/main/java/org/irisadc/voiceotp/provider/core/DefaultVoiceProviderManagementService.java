@@ -32,10 +32,14 @@ public final class DefaultVoiceProviderManagementService implements VoiceProvide
             throws VoiceProviderException {
         validate(() -> validator.validate(request));
         String normalized = validator.normalizeName(request.name());
-        char[] password = request.ariPassword();
+        char[] password = request.consumeAriPassword();
         String secretRef = null;
         try {
             secretRef = secretStore.store(scope, normalized, password);
+            if (secretRef == null || secretRef.isBlank()) {
+                throw error(VoiceProviderException.Code.SECRET_STORE_UNAVAILABLE,
+                        "Secret store did not return a valid reference");
+            }
             Instant now = Instant.now();
             ProviderRecord record = new ProviderRecord(normalized, request.ariUrl().trim(),
                     request.username().trim(), secretRef, request.application(), request.outboundEndpoint(),
@@ -44,6 +48,9 @@ public final class DefaultVoiceProviderManagementService implements VoiceProvide
                     request.enabled(), 1L, now, now);
             return toSummary(repository.create(scope, record));
         } catch (VoiceProviderException e) {
+            cleanupSecret(scope, secretRef);
+            throw e;
+        } catch (RuntimeException e) {
             cleanupSecret(scope, secretRef);
             throw e;
         } finally {
@@ -75,11 +82,17 @@ public final class DefaultVoiceProviderManagementService implements VoiceProvide
         if (current.revision() != expectedRevision) {
             throw error(VoiceProviderException.Code.VERSION_CONFLICT, "Provider version conflict");
         }
-        char[] password = request.ariPassword();
+        char[] password = request.consumeAriPassword();
         String newSecretRef = current.secretReference();
         boolean rotated = password != null;
         try {
-            if (rotated) newSecretRef = secretStore.store(scope, normalized, password);
+            if (rotated) {
+                newSecretRef = secretStore.store(scope, normalized, password);
+                if (newSecretRef == null || newSecretRef.isBlank()) {
+                    throw error(VoiceProviderException.Code.SECRET_STORE_UNAVAILABLE,
+                            "Secret store did not return a valid reference");
+                }
+            }
             ProviderRecord updated = new ProviderRecord(current.name(), request.ariUrl().trim(),
                     request.username().trim(), newSecretRef, request.application(), request.outboundEndpoint(),
                     request.dialplanContext(), request.dialplanExtension(), request.callerId(),
@@ -91,6 +104,11 @@ public final class DefaultVoiceProviderManagementService implements VoiceProvide
             }
             return toSummary(saved);
         } catch (VoiceProviderException e) {
+            if (rotated && !java.util.Objects.equals(newSecretRef, current.secretReference())) {
+                cleanupSecret(scope, newSecretRef);
+            }
+            throw e;
+        } catch (RuntimeException e) {
             if (rotated && !java.util.Objects.equals(newSecretRef, current.secretReference())) {
                 cleanupSecret(scope, newSecretRef);
             }
@@ -159,7 +177,7 @@ public final class DefaultVoiceProviderManagementService implements VoiceProvide
         try {
             secretStore.delete(scope, reference);
         } catch (VoiceProviderException ignored) {
-            // A production adapter must enqueue failed cleanup for reconciliation.
+            // Production adapters must emit a redacted cleanup event for reconciliation.
         }
     }
 
