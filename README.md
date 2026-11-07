@@ -30,6 +30,8 @@ Add a first-class **Voice Notification Channel** to WSO2 Identity Server 7.3.0 u
 | [Testing and operations](docs/08-testing-and-operations.md) | Test strategy, deployment, rollback and monitoring |
 | [Acceptance criteria](docs/09-acceptance-criteria.md) | Release gates |
 | [Open decisions and risks](docs/10-open-decisions-and-risks.md) | Unverified assumptions, risks and decision log |
+| [Version lock](docs/version-lock.md) | Product-resolved WSO2 7.3.0 component versions |
+| [Source validation review](docs/11-source-validation-review.md) | Source-backed review findings and corrections |
 
 ## Critical design invariants
 
@@ -43,7 +45,7 @@ Add a first-class **Voice Notification Channel** to WSO2 Identity Server 7.3.0 u
 
 ## Version status
 
-Preliminary source tags are recorded in [the prerequisites matrix](docs/03-prerequisites-and-version-matrix.md). They are not a final dependency lock. Exact versions must be resolved from the WSO2 IS 7.3.0 product POMs and installed bundle manifests before implementation. The Console UI version is specifically still unverified.
+Product-resolved versions are recorded in [version-lock.md](docs/version-lock.md) and [the prerequisites matrix](docs/03-prerequisites-and-version-matrix.md), based on the official WSO2 IS 7.3.0 POM and distribution inventory. Installed bundle manifests must still be checked in the actual deployment before build/release.
 
 ## Implementation status
 
