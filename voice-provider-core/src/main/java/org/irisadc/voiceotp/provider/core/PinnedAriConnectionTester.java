@@ -164,7 +164,7 @@ public final class PinnedAriConnectionTester implements AriConnectionTester {
         } catch (CharacterCodingException e) {
             throw new IOException("Credential encoding failed", e);
         } finally {
-            java.util.Arrays.fill(combined, '\\u0000');
+            java.util.Arrays.fill(combined, '\0');
             if (raw != null) java.util.Arrays.fill(raw, (byte) 0);
             if (bytes != null && bytes.hasArray()) java.util.Arrays.fill(bytes.array(), (byte) 0);
         }
