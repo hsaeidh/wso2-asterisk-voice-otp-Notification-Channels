@@ -32,12 +32,15 @@ class DefaultVoiceProviderManagementServiceTest {
     }
 
     @Test
-    void createStoresSecretButNeverReturnsIt() throws Exception {
-        ProviderSummary result = service.create(scope, createRequest("MainProvider", "top-secret"));
+    void createStoresSecretButNeverReturnsItOrRetainsRequestBuffer() throws Exception {
+        char[] input = "top-secret".toCharArray();
+        ProviderCreateRequest request = createRequest("MainProvider", input);
+        ProviderSummary result = service.create(scope, request);
 
         assertEquals("mainprovider", result.name());
         assertTrue(result.secretConfigured());
         assertFalse(result.toString().contains("top-secret"));
+        assertEquals(-1, request.passwordLength());
         assertEquals(1, secrets.values.size());
         assertTrue(Arrays.equals("top-secret".toCharArray(), secrets.values.values().iterator().next()));
     }
@@ -52,13 +55,14 @@ class DefaultVoiceProviderManagementServiceTest {
                 () -> service.create(scope, request));
 
         assertEquals(VoiceProviderException.Code.VALIDATION_FAILED, error.getCode());
+        assertEquals(-1, request.passwordLength());
         assertTrue(repository.rows.isEmpty());
         assertTrue(secrets.values.isEmpty());
     }
 
     @Test
     void scopesAreIsolated() throws Exception {
-        service.create(scope, createRequest("MainProvider", "secret"));
+        service.create(scope, createRequest("MainProvider", "secret".toCharArray()));
 
         assertThrows(VoiceProviderException.class, () -> service.get(otherScope, "mainprovider"));
         assertEquals(1, service.list(scope, PageRequest.firstPage()).totalCount());
@@ -67,7 +71,7 @@ class DefaultVoiceProviderManagementServiceTest {
 
     @Test
     void updateWithoutPasswordPreservesSecretAndIncrementsRevision() throws Exception {
-        ProviderSummary created = service.create(scope, createRequest("MainProvider", "secret"));
+        ProviderSummary created = service.create(scope, createRequest("MainProvider", "secret".toCharArray()));
         String originalRef = repository.find(scope, "mainprovider").orElseThrow().secretReference();
 
         ProviderUpdateRequest update = updateRequest(null, "ari-new-user");
@@ -81,13 +85,14 @@ class DefaultVoiceProviderManagementServiceTest {
 
     @Test
     void updateRotatesSecretAndRejectsStaleRevision() throws Exception {
-        ProviderSummary created = service.create(scope, createRequest("MainProvider", "old-secret"));
+        ProviderSummary created = service.create(scope, createRequest("MainProvider", "old-secret".toCharArray()));
         String oldRef = repository.find(scope, "mainprovider").orElseThrow().secretReference();
 
-        ProviderSummary updated = service.update(scope, "mainprovider",
-                updateRequest("new-secret", "ari-user"), created.revision());
+        ProviderUpdateRequest update = updateRequest("new-secret", "ari-user");
+        ProviderSummary updated = service.update(scope, "mainprovider", update, created.revision());
 
         String newRef = repository.find(scope, "mainprovider").orElseThrow().secretReference();
+        assertEquals(-1, update.passwordLength());
         assertNotEquals(oldRef, newRef);
         assertFalse(secrets.values.containsKey(oldRef));
         assertTrue(secrets.values.containsKey(newRef));
@@ -97,7 +102,7 @@ class DefaultVoiceProviderManagementServiceTest {
 
     @Test
     void deleteIsBlockedWhileDeliveryIsActive() throws Exception {
-        ProviderSummary created = service.create(scope, createRequest("MainProvider", "secret"));
+        ProviderSummary created = service.create(scope, createRequest("MainProvider", "secret".toCharArray()));
         usage.inUse = true;
 
         VoiceProviderException error = assertThrows(VoiceProviderException.class,
@@ -108,20 +113,20 @@ class DefaultVoiceProviderManagementServiceTest {
     }
 
     @Test
-    void connectionTestIsReadOnlyAtServiceBoundaryAndClearsResolvedSecret() throws Exception {
-        service.create(scope, createRequest("MainProvider", "secret"));
+    void connectionTestDelegatesAndClearsResolvedSecret() throws Exception {
+        service.create(scope, createRequest("MainProvider", "secret".toCharArray()));
 
         ProviderConnectionTestResult result = service.testConnection(scope, "mainprovider");
 
         assertTrue(result.successful());
         assertEquals("secret", tester.received);
         assertTrue(Arrays.equals(new char[] {'\0','\0','\0','\0','\0','\0'}, tester.bufferAfterCall));
-        assertEquals(0, tester.callCount);
+        assertEquals(1, tester.callCount);
     }
 
-    private ProviderCreateRequest createRequest(String name, String password) {
+    private ProviderCreateRequest createRequest(String name, char[] password) {
         return new ProviderCreateRequest(name, "https://asterisk.example.test:8089/ari",
-                "ari-user", password.toCharArray(), "voice-otp", "PJSIP/irisa", "voice-otp",
+                "ari-user", password, "voice-otp", "PJSIP/irisa", "voice-otp",
                 "s", "+982100000000", 25, 45, "fa", true);
     }
 
