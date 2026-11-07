@@ -27,24 +27,23 @@ public final class ProviderValidator {
         return name.trim().toLowerCase(Locale.ROOT);
     }
 
-    public void validate(ProviderCreateRequest request) {
+    public void validate(ProviderCreateRequest request, int consumedPasswordLength) {
         normalizeName(request.name());
         validateCommon(request.ariUrl(), request.username(), request.application(),
                 request.outboundEndpoint(), request.dialplanContext(), request.dialplanExtension(),
                 request.callerId(), request.ringTimeoutSeconds(), request.maxCallDurationSeconds(),
                 request.language());
-        if (request.passwordLength() < 1 || request.passwordLength() > 512) {
+        if (consumedPasswordLength < 1 || consumedPasswordLength > 512) {
             throw new IllegalArgumentException("ARI password is required and must be at most 512 characters");
         }
     }
 
-    public void validate(ProviderUpdateRequest request) {
+    public void validate(ProviderUpdateRequest request, int consumedPasswordLength) {
         validateCommon(request.ariUrl(), request.username(), request.application(),
                 request.outboundEndpoint(), request.dialplanContext(), request.dialplanExtension(),
                 request.callerId(), request.ringTimeoutSeconds(), request.maxCallDurationSeconds(),
                 request.language());
-        int length = request.passwordLength();
-        if (length == 0 || length > 512) {
+        if (consumedPasswordLength == 0 || consumedPasswordLength > 512) {
             throw new IllegalArgumentException("ARI password must contain 1-512 characters when supplied");
         }
     }
