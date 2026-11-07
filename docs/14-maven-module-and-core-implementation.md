@@ -14,7 +14,7 @@ The API module intentionally has no WSO2 dependency. The Core module also avoids
 
 - Scope value object requires both tenant domain and Organization ID.
 - Provider names are normalized to lowercase and validated against a safe identifier pattern.
-- ARI URLs require HTTPS and an exact host allowlist.
+- ARI URLs require HTTPS, an exact host/port allowlist and an `/ari` path; production still requires connection-time DNS/IP pinning against rebinding.
 - ARI user name, Stasis application, endpoint, dialplan context/extension, caller ID, language and timeout bounds are validated.
 - Create stores the ARI credential through a secret-store interface and persists only its opaque reference.
 - Read/list DTOs expose `secretConfigured`, never the credential or reference.
