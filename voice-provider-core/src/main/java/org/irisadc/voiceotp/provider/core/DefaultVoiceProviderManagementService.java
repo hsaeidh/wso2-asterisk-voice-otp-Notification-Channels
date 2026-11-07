@@ -30,11 +30,11 @@ public final class DefaultVoiceProviderManagementService implements VoiceProvide
     @Override
     public ProviderSummary create(ProviderScope scope, ProviderCreateRequest request)
             throws VoiceProviderException {
-        validate(() -> validator.validate(request));
-        String normalized = validator.normalizeName(request.name());
         char[] password = request.consumeAriPassword();
         String secretRef = null;
         try {
+            validate(() -> validator.validate(request, password == null ? -1 : password.length));
+            String normalized = validator.normalizeName(request.name());
             secretRef = secretStore.store(scope, normalized, password);
             if (secretRef == null || secretRef.isBlank()) {
                 throw error(VoiceProviderException.Code.SECRET_STORE_UNAVAILABLE,
@@ -76,16 +76,18 @@ public final class DefaultVoiceProviderManagementService implements VoiceProvide
     @Override
     public ProviderSummary update(ProviderScope scope, String name, ProviderUpdateRequest request,
                                   long expectedRevision) throws VoiceProviderException {
-        validate(() -> validator.validate(request));
-        String normalized = validator.normalizeName(name);
-        ProviderRecord current = find(scope, normalized);
-        if (current.revision() != expectedRevision) {
-            throw error(VoiceProviderException.Code.VERSION_CONFLICT, "Provider version conflict");
-        }
         char[] password = request.consumeAriPassword();
-        String newSecretRef = current.secretReference();
+        String newSecretRef = null;
+        ProviderRecord current = null;
         boolean rotated = password != null;
         try {
+            validate(() -> validator.validate(request, password == null ? -1 : password.length));
+            String normalized = validator.normalizeName(name);
+            current = find(scope, normalized);
+            if (current.revision() != expectedRevision) {
+                throw error(VoiceProviderException.Code.VERSION_CONFLICT, "Provider version conflict");
+            }
+            newSecretRef = current.secretReference();
             if (rotated) {
                 newSecretRef = secretStore.store(scope, normalized, password);
                 if (newSecretRef == null || newSecretRef.isBlank()) {
@@ -104,14 +106,10 @@ public final class DefaultVoiceProviderManagementService implements VoiceProvide
             }
             return toSummary(saved);
         } catch (VoiceProviderException e) {
-            if (rotated && !java.util.Objects.equals(newSecretRef, current.secretReference())) {
-                cleanupSecret(scope, newSecretRef);
-            }
+            cleanupRotatedSecret(scope, newSecretRef, current, rotated);
             throw e;
         } catch (RuntimeException e) {
-            if (rotated && !java.util.Objects.equals(newSecretRef, current.secretReference())) {
-                cleanupSecret(scope, newSecretRef);
-            }
+            cleanupRotatedSecret(scope, newSecretRef, current, rotated);
             throw e;
         } finally {
             clear(password);
@@ -148,6 +146,14 @@ public final class DefaultVoiceProviderManagementService implements VoiceProvide
             return connectionTester.test(provider, secret);
         } finally {
             clear(secret);
+        }
+    }
+
+    private void cleanupRotatedSecret(ProviderScope scope, String newReference,
+                                      ProviderRecord current, boolean rotated) {
+        if (rotated && newReference != null
+                && (current == null || !java.util.Objects.equals(newReference, current.secretReference()))) {
+            cleanupSecret(scope, newReference);
         }
     }
 
