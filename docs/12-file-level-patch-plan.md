@@ -198,7 +198,7 @@ A dedicated Voice event should have its own event-handler module name and subscr
 
 ## 7. Change-control status
 
-This plan is documentation, not authorization to modify dependent WSO2 repositories. No source code in those repositories has been changed. Implementation requires explicit approval for the relevant repositories after this plan is reviewed.
+This plan is documentation of the upstream contribution scope. No source code in dependent WSO2 repositories has been changed. The user has authorized adding this contributor documentation only; actual implementation changes are to be proposed as separate repository-specific PRs, using the exact source baselines and maintainer review process in [docs/16-upstream-wso2-contribution-map.md](16-upstream-wso2-contribution-map.md).
 
 
 ## 8. Additional source-level constraints confirmed
